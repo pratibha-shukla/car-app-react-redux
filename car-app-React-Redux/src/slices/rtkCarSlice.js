@@ -1,60 +1,72 @@
-
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+
 /**
- * createAsyncThunk: Handles asynchronous logic.
- * 'car/sellAsync' is the action name.
- * We simulate a server delay using a Promise and setTimeout.
+ * Thunk to simulate a car sale.
+ * We use { getState } to access the current state and determine 
+ * the next sale number for that specific car model.
  */
-// Thunk to simulate an API call for selling a car
 export const sellCarAsync = createAsyncThunk(
   'car/sellAsync',
-  async (carId) => {
-    // Wait for 1 second (simulating a network request)
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 sec delay
-     // Return the carId to be used in the 'fulfilled' case
-    return carId;
+  async (carData, { getState }) => {
+    // 1. Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // 2. Access state to find the current saleCount for this specific car
+    const state = getState();
+    const car = state.car.cars.find(c => c.id === carData.id);
+    
+    // 3. Calculate the next sale number (e.g., if saleCount is 0, this is #1)
+    const nextSaleNumber = (car.saleCount || 0) + 1;
+
+    // 4. Return both the car info and the specific sale number to the reducers
+    return { ...carData, saleNumber: nextSaleNumber };
   }
 );
 
 const rtkCarSlice = createSlice({
-  name: 'car',// Unique name for this slice of state
+  name: 'car',
   initialState: {
     cars: [
-      { id: 1, name: 'Tesla Model 3', quantity: 10 },
-      { id: 2, name: 'Porsche 911', quantity: 5 },
-      { id: 3, name: 'Ford Mustang', quantity: 8 },
+      // Added saleCount: 0 to each car to track individual sales
+      { id: 1, name: 'Tesla Model 3', quantity: 10, saleCount: 0 },
+      { id: 2, name: 'Porsche 911', quantity: 5, saleCount: 0 },
+      { id: 3, name: 'Ford Mustang', quantity: 8, saleCount: 0 },
     ],
-    loadingId: null, // Tracks which car is currently being sold
+    loadingId: null, 
   },
   reducers: {
-
-       // Regular synchronous action to reset quantities
     restock: (state) => {
-      state.cars.forEach(car => car.quantity = 10);
+      state.cars.forEach(car => {
+        car.quantity = 10;
+        car.saleCount = 0; // Optional: Reset counters on restock
+      });
     }
   },
-
-
-    /**
-   * extraReducers: Listens for actions defined outside this slice, 
-   * specifically the lifecycle of our Async Thunk.
-   */
   extraReducers: (builder) => {
     builder
-
-     // Triggered immediately when sellCarAsync starts
       .addCase(sellCarAsync.pending, (state, action) => {
-        state.loadingId = action.meta.arg; // Set loading for specific car // action.meta.arg contains the carId passed in
+        /**
+         * FIX: Since action.meta.arg is now an object {id, name},
+         * we must use .id to ensure the loading spinner shows on the right card.
+         */
+        state.loadingId = action.meta.arg.id; 
       })
-
-        // Triggered after the 1-second delay finishes
       .addCase(sellCarAsync.fulfilled, (state, action) => {
-        const car = state.cars.find(c => c.id === action.payload);
-        if (car && car.quantity > 0) car.quantity -= 1; // Decrease stock
-        state.loadingId = null; // Clear loading state
+        const { id } = action.payload; 
+        const car = state.cars.find(c => c.id === id);
+        
+        if (car && car.quantity > 0) {
+          car.quantity -= 1;     // Decrease inventory
+          car.saleCount += 1;    // Increment this car's specific counter
+        }
+        state.loadingId = null; 
+      })
+      .addCase(sellCarAsync.rejected, (state) => {
+        state.loadingId = null; // Reset loading if the "API" fails
       });
   }
 });
 
-export const { restock } = rtkCarSlice.actions; // Export the restock action
-export default rtkCarSlice.reducer; // Export the reducer for the store
+export const { restock } = rtkCarSlice.actions;
+export default rtkCarSlice.reducer;
+

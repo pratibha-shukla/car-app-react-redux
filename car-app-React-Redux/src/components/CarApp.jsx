@@ -43,7 +43,8 @@ const CarApp = () => {
               
               <button 
                 disabled={isOutOfStock || isProcessing} 
-                onClick={() => dispatch(sellCarAsync(car.id))}
+               // Pass an object with both ID and Name
+               onClick={() => dispatch(sellCarAsync({ id: car.id, name: car.name }))}
                 style={{
                   ...styles.sellBtn,
                   backgroundColor: isOutOfStock ? '#94a3b8' : (isProcessing ? '#6366f1' : '#4f46e5'),

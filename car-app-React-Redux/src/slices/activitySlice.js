@@ -23,10 +23,11 @@ const activitySlice = createSlice({
 
     // Automatically add a log whenever a car sale is successful
     builder.addCase(sellCarAsync.fulfilled, (state, action) => {
+         const { name, saleNumber, id } = action.payload; // Grab the name sent from the thunk
       const timestamp = new Date().toLocaleTimeString();
 
-       // unshift adds the new log to the TOP of the list
-      state.logs.unshift(`Sold Car ID ${action.payload} at ${timestamp}`);
+  // Example result: "Sold Tesla Model 3 (ID: 1) #1 at 5:00 PM"
+  state.logs.unshift(`Sold ${name} (ID: ${id}) #${saleNumber} at ${timestamp}`);
     });
   }
 });
